@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalos Track Builder</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#e8e8e8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Header ── */
+header{background:#111;border-bottom:1px solid #222;padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+header h1{font-size:15px;font-weight:700;color:#c8a96e;letter-spacing:.3px;white-space:nowrap}
+.hint{font-size:11px;color:#444;white-space:nowrap}
+.header-sep{flex:1}
+.hbtn{padding:5px 12px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#ccc;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.hbtn:hover{background:#2a2a2a;color:#fff}
+.hbtn.gold{background:#c8a96e;color:#000;border-color:#c8a96e;font-weight:600}
+.hbtn.gold:hover{background:#d4b87d}
+.hbtn.red{border-color:#7f1d1d;color:#f87171}
+.hbtn.red:hover{background:#1a0000}
+
+/* ── Body ── */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ── Pool ── */
+.pool-panel{width:256px;flex-shrink:0;background:#0d0d0d;border-right:1px solid #1e1e1e;display:flex;flex-direction:column;overflow:hidden}
+.pool-top{padding:8px 10px;border-bottom:1px solid #1a1a1a;flex-shrink:0}
+.pool-top h2{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px}
+.pool-top input,.pool-top select{background:#151515;border:1px solid #252525;color:#ccc;padding:5px 7px;border-radius:5px;font-size:11px;width:100%;margin-bottom:5px}
+.pool-top input::placeholder{color:#444}
+.pool-count{font-size:10px;color:#444;margin-top:2px}
+.pool-body{flex:1;overflow-y:auto;padding:6px}
+.pool-body::-webkit-scrollbar{width:3px}
+.pool-body::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
+
+/* Pool card */
+.pc{background:#161616;border:1px solid #222;border-left:3px solid transparent;border-radius:5px;padding:6px 8px;margin-bottom:4px;cursor:grab;user-select:none;transition:all .12s}
+.pc:hover{background:#1e1e1e;border-color:#2e2e2e}
+.pc.dragging{opacity:.3}
+.pc.in-track{border-left-color:#c8a96e}
+.pc-title{font-size:11px;font-weight:600;color:#ddd;line-height:1.3;margin-bottom:3px}
+.pc-meta{display:flex;gap:5px;flex-wrap:wrap}
+.badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:500;background:#1a1a1a}
+.bd{color:#7dd3fc;background:#0c1c2e}
+.bl{color:#86efac;background:#0a1a0e}
+.be{color:#f9a8d4;background:#1e0a14}
+.bs{color:#fcd34d;background:#1c1500}
+
+/* ── Tracks ── */
+.tracks-wrap{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;padding:8px 6px;gap:7px}
+.tracks-wrap::-webkit-scrollbar{height:5px}
+.tracks-wrap::-webkit-scrollbar-thumb{background:#222;border-radius:3px}
+
+/* Track column */
+.tc{min-width:236px;max-width:236px;flex-shrink:0;background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
+.tc-head{padding:7px 9px 5px;border-bottom:1px solid #1a1a1a;flex-shrink:0}
+.tc-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px}
+.tc-stats{font-size:10px;color:#444;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.tc-stat{cursor:default}
+.tc-stat.filled{color:#c8a96e}
+
+/* Tabs inside track */
+.tab-row{display:flex;gap:3px;padding:5px 7px;border-bottom:1px solid #161616;flex-shrink:0;background:#0a0a0a}
+.tb{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid transparent;color:#555;transition:all .12s;white-space:nowrap}
+.tb:hover{color:#aaa;border-color:#2a2a2a}
+.tb.active{color:#e0e0e0;background:#1e1e1e;border-color:#2e2e2e}
+.tab-row.days-row{padding:4px 7px;gap:4px}
+.tb.days{font-size:10px;color:#555}
+.tb.days.active{color:#7dd3fc;border-color:#1e3a5f;background:#0c1c2e}
+
+/* Drop zone body */
+.tc-body{flex:1;overflow-y:auto;padding:5px;display:flex;flex-direction:column;gap:5px}
+.tc-body::-webkit-scrollbar{width:3px}
+.tc-body::-webkit-scrollbar-thumb{background:#1e1e1e;border-radius:2px}
+
+/* Gender section */
+.gs{border-radius:5px;overflow:hidden;border:1px solid #1a1a1a}
+.gl{font-size:10px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:.5px;padding:4px 7px;background:#0f0f0f;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between}
+.gl span{font-size:10px;color:#333;font-weight:400;font-style:normal;text-transform:none;letter-spacing:0}
+
+/* Drop zone */
+.dz{min-height:52px;padding:3px;border:1px dashed transparent;border-radius:3px;transition:border-color .12s,background .12s}
+.dz.over{border-color:#c8a96e55;background:#c8a96e08}
+.dz-empty{font-size:10px;color:#2a2a2a;text-align:center;padding:14px 6px;pointer-events:none}
+
+/* Track card */
+.tcard{background:#161616;border:1px solid #222;border-radius:4px;padding:5px 6px;cursor:grab;user-select:none;position:relative;display:flex;align-items:flex-start;gap:5px;transition:border-color .12s}
+.tcard:hover{border-color:#333;background:#1c1c1c}
+.tcard.dragging{opacity:.25}
+.tcard-num{font-size:10px;font-weight:700;color:#c8a96e;min-width:14px;padding-top:1px}
+.tcard-info{flex:1;min-width:0}
+.tcard-title{font-size:10px;font-weight:600;color:#ddd;line-height:1.3;margin-bottom:2px}
+.tcard-meta{font-size:10px;color:#555}
+.tcard-note{font-size:10px;color:#a07040;margin-top:2px;font-style:italic;line-height:1.3}
+.tcard-btns{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+.icobtn{background:none;border:none;color:#3a3a3a;cursor:pointer;font-size:11px;line-height:1;padding:1px 3px;border-radius:2px;transition:color .12s}
+.icobtn:hover{color:#ccc}
+.icobtn.del:hover{color:#f87171}
+.icobtn.note:hover{color:#c8a96e}
+
+/* Modals */
+.overlay{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:999}
+.overlay.open{display:flex}
+.modal{background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:16px;min-width:300px}
+.modal h3{font-size:13px;font-weight:600;margin-bottom:10px;color:#c8a96e}
+.modal textarea{width:100%;background:#0f0f0f;border:1px solid #252525;color:#ccc;padding:7px;border-radius:5px;font-size:12px;resize:vertical;min-height:60px;font-family:inherit}
+.modal-btns{display:flex;gap:7px;margin-top:10px;justify-content:flex-end}
+
+.export-modal{background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:16px;width:620px;max-height:75vh;display:flex;flex-direction:column;gap:10px}
+.export-modal pre{flex:1;overflow:auto;background:#0a0a0a;border:1px solid #222;border-radius:5px;padding:10px;font-size:10px;color:#86efac;white-space:pre-wrap;font-family:'SF Mono',monospace;min-height:200px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏗️ Kalos Track Builder</h1>
+  <span class="hint">Drag programs into tracks. Use equipment + days tabs to build separate paths per scenario.</span>
+  <span class="header-sep"></span>
+  <button class="hbtn" onclick="loadDefaults()">Load Defaults</button>
+  <button class="hbtn red" onclick="clearAll()">Clear All</button>
+  <span id="saveIndicator" style="font-size:10px;color:#3a3a3a;transition:color .5s">● Saved</span>
+  <button class="hbtn" onclick="copyShareLink()" id="shareBtn">🔗 Copy Link</button>
+  <button class="hbtn gold" onclick="doExport()">Export JSON ↓</button>
+</header>
+
+<div id="shareBanner" style="display:none;background:#0c1a0c;border-bottom:1px solid #1a3a1a;padding:7px 16px;font-size:11px;color:#86efac;display:none;align-items:center;gap:10px;flex-shrink:0">
+  <span>✅ Loaded from shared link — your changes are saved locally. Use <strong>🔗 Copy Share Link</strong> to send an updated link back.</span>
+  <button class="hbtn" style="margin-left:auto;font-size:10px;padding:3px 8px" onclick="this.parentElement.style.display='none'">Dismiss</button>
+</div>
+
+<div class="app-body">
+  <!-- Pool -->
+  <div class="pool-panel">
+    <div class="pool-top">
+      <h2>Program Pool</h2>
+      <input type="search" id="pSearch" placeholder="Search programs…" oninput="renderPool()">
+      <select id="pEquip" onchange="renderPool()">
+        <option value="">All equipment</option>
+        <option value="fullgym">Full Gym</option>
+        <option value="tonal">Tonal / Cable-only</option>
+        <option value="db">Dumbbells only</option>
+      </select>
+      <select id="pDays" onchange="renderPool()">
+        <option value="">All days/week</option>
+        <option value="2-3">2–3 days/week</option>
+        <option value="4-5">4–5 days/week</option>
+      </select>
+      <select id="pType" onchange="renderPool()">
+        <option value="primary">Primary programs</option>
+        <option value="">All programs</option>
+        <option value="secondary">Secondary only</option>
+      </select>
+      <div class="pool-count" id="poolCount"></div>
+    </div>
+    <div class="pool-body" id="poolBody"
+      ondragover="event.preventDefault()"
+      ondrop="onDropToPool(event)">
+    </div>
+  </div>
+
+  <!-- Tracks -->
+  <div class="tracks-wrap" id="tracksWrap"></div>
+</div>
+
+<!-- Note modal -->
+<div class="overlay" id="noteOverlay">
+  <div class="modal">
+    <h3>Step note</h3>
+    <textarea id="noteTA" placeholder="e.g. Anchor program, Entry point for beginners…"></textarea>
+    <div class="modal-btns">
+      <button class="hbtn" onclick="closeNote()">Cancel</button>
+      <button class="hbtn gold" onclick="saveNote()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="overlay" id="exportOverlay">
+  <div class="export-modal">
+    <h3 style="color:#c8a96e;font-size:14px">Track Config — Export JSON</h3>
+    <pre id="exportPre"></pre>
+    <div class="modal-btns">
+      <button class="hbtn" onclick="copyExport()">Copy to Clipboard</button>
+      <button class="hbtn gold" onclick="document.getElementById('exportOverlay').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════
+const EQUIP_OPTIONS = [
+  { id:'fullgym', label:'Full Gym',    short:'FG' },
+  { id:'tonal',   label:'Tonal',       short:'T'  },
+  { id:'db',      label:'DB Only',     short:'DB' },
+];
+const DAYS_OPTIONS = [
+  { id:'2-3', label:'2–3 days' },
+  { id:'4-5', label:'4–5 days' },
+];
+const GENDERS = ['male','female'];
+
+const TRACKS = [
+  { id:'recomp',    label:'Recomposition', emoji:'⚖️',  color:'#7c3aed' },
+  { id:'fatloss',   label:'Fat Loss',      emoji:'🔥',  color:'#ea580c' },
+  { id:'muscle',    label:'Gain Muscle',   emoji:'💪',  color:'#dc2626' },
+  { id:'athlete',   label:'Athlete',       emoji:'⚡',  color:'#0891b2' },
+  { id:'runner',    label:'Runner',        emoji:'🏃',  color:'#16a34a' },
+  { id:'longevity', label:'Longevity',     emoji:'🌱',  color:'#059669' },
+];
+
+// ═══════════════════════════════════════════════
+// PROGRAM DATA
+// ═══════════════════════════════════════════════
+const PROGRAMS = [
+  {id:"685c32bb6c0267e40ec5ebad",title:"Prime | 4-Day (ULUL)",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Trap Bar|Dip Station|Leg Press",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"68f81e5cad7a6907a839fe45",title:"Recomp | Dumbbells | 3-Day",level:"intermediate",equipment:"Dumbbell|Mini Band",daysPerWeek:3,weeks:12,tags:"Dumbbell|Primary"},
+  {id:"683f9ea7aeb1c976ca4c8b5d",title:"Forge | 4-Day",level:"intermediate|advanced",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Trap Bar|Smith Machine|Leg Press",daysPerWeek:4,weeks:16,tags:"Primary"},
+  {id:"681bf0f0904abafac70cf4c7",title:"Foundation II 3-Day",level:"beginner",equipment:"Cable Machine|Machine|Smith Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"68f95d68f1d6992335e8f6d9",title:"Dumbbell Athlete | 2x-Week",level:"beginner",equipment:"Dumbbell",daysPerWeek:2,weeks:12,tags:"Dumbbell|Primary"},
+  {id:"68a9049e918280805f22c65c",title:"Dumbbell Circuit 2x",level:"all_level",equipment:"Dumbbell",daysPerWeek:2,weeks:12,tags:"Dumbbell|Primary"},
+  {id:"6903b022a5610afac42b782c",title:"Evolve | 2-Day",level:"beginner",equipment:"Machine|Exercise Ball|Dumbbell|Cable Machine|Smith Machine|Resistance Band",daysPerWeek:2,weeks:12,tags:"Primary|Evolve"},
+  {id:"687302f4640e1fe871ce3bc6",title:"Prime | 3-Day (FUL)",level:"intermediate",equipment:"Dip Station|Dumbbell|Machine|Barbell|Cable Machine|Pull Up Bar|Resistance Band|Trap Bar|Leg Press",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"696d4b7e990d15907d03f00e",title:"Functional Strength | 4-Day | ULUL",level:"intermediate",equipment:"Exercise Ball|Dip Station|Dumbbell|Machine|Barbell|Cable Machine|Trap Bar|Mini Band",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"685373ff34592134d899d82a",title:"Build | 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Dip Station|Smith Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"6824e2f5ddd21d15affe0b33",title:"Growth | 3-Day",level:"intermediate",equipment:"Machine|Dip Station|Dumbbell|Barbell|Cable Machine|Pull Up Bar",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"685c2f6b85b2a834a6255d14",title:"Prime | 3-Day",level:"intermediate",equipment:"Dip Station|Dumbbell|Barbell|Machine|Pull Up Bar|Resistance Band|Trap Bar|Cable Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"6996445aec55a6b373a41ef3",title:"Solidify | 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Smith Machine|Resistance Band",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"67cc9da265a0bd7e74b91354",title:"Toned (3x)",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Trap Bar|Medicine Ball",daysPerWeek:3,weeks:14,tags:"Primary"},
+  {id:"6650bf043b93550026c5ad2e",title:"Athlete 3-Day",level:"intermediate",equipment:"Barbell|Dumbbell|Machine|Pull Up Bar|Resistance Band|Medicine Ball|Trap Bar|Dip Station",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"664ba5d7134436002689b884",title:"Recomposition (2X/Week)",level:"intermediate",equipment:"Dip Station|Barbell|Dumbbell|Cable Machine|Machine|Pull Up Bar|Medicine Ball",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"68f95d925ed6594bd89c2559",title:"Dumbbell Athlete | 3x-Week",level:"beginner",equipment:"Dumbbell",daysPerWeek:3,weeks:12,tags:"Dumbbell|Primary"},
+  {id:"6903b2449070ffc05338ace3",title:"Evolve | 3-Day",level:"beginner",equipment:"Machine|Exercise Ball|Dumbbell|Cable Machine|Smith Machine|Resistance Band",daysPerWeek:3,weeks:12,tags:"Primary|Evolve"},
+  {id:"672b12dcd90d75139ef82341",title:"Recomp | Dumbbells Only 2-Day",level:"intermediate",equipment:"Dumbbell",daysPerWeek:2,weeks:18,tags:"Dumbbell|Primary"},
+  {id:"687844a8b1d804f9a43f6793",title:"Dumbbell Circuit 3x",level:"intermediate",equipment:"Dumbbell",daysPerWeek:3,weeks:12,tags:"Dumbbell|Primary"},
+  {id:"697ed0663d9a2f0f4b085bee",title:"Functional Strength | 3-Day | ULF",level:"intermediate",equipment:"Exercise Ball|Dumbbell|Machine|Barbell|Cable Machine|Pull Up Bar|Trap Bar|Dip Station|Mini Band",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"684afb035cba7feb42931d9c",title:"Prime | 2-Day",level:"intermediate",equipment:"Dip Station|Dumbbell|Barbell|Machine|Pull Up Bar|Resistance Band|Trap Bar|Cable Machine",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"69308c5ce9a8096725c512b4",title:"Charge | 4-Day (Hypertrophy/Power)",level:"intermediate|advanced",equipment:"Machine|Dumbbell|Barbell|Cable Machine|Resistance Band|Trap Bar",daysPerWeek:4,weeks:12,tags:"Primary|Charge"},
+  {id:"6759d4a625a498ca477a02a7",title:"Recomp | Dumbbells Only 3-Day",level:"intermediate",equipment:"Dumbbell",daysPerWeek:3,weeks:18,tags:"Dumbbell|Primary"},
+  {id:"67e43716a6287a8124abbdb0",title:"Sculpt 2-Day",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Pull Up Bar|Leg Press",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"67e04af05f8991108a7db6da",title:"Sculpt 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Pull Up Bar|Leg Press",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"666db8e0c1eafc00252c55e6",title:"Foundation | 3x Week",level:"beginner",equipment:"Machine|Dumbbell|Smith Machine|Cable Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"68cc98ed5c65f34e66358a86",title:"Kettlebell Flow",level:"intermediate",equipment:"",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"68f67ed5a1f1309be99fd5a0",title:"Hybrid Athlete (FUL)",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Trap Bar|Dip Station",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"664c2faab32d4000252ee594",title:"Starter 3-Day",level:"beginner",equipment:"Dumbbell",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"691b558351b6f3123375ac14",title:"Female Recomposition | 4 Day",level:"beginner",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Smith Machine",daysPerWeek:4,weeks:12,tags:"Primary|Female Recomp"},
+  {id:"67f00570d9cae861586749a0",title:"Stability 3X",level:"intermediate",equipment:"Resistance Band|Dumbbell|Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"67c8e9570045a3e404d18281",title:"Stability 2X",level:"intermediate",equipment:"Resistance Band|Dumbbell|Machine",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"670416e9eabc450023e50f92",title:"Female Recomposition | 3-Day | L/U/C&G",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Smith Machine",daysPerWeek:3,weeks:12,tags:"Primary|Female Recomp"},
+  {id:"68ffb2d32980b94f5b6e527b",title:"Hybrid Force | 4-Day (Upper/Lower)",level:"intermediate",equipment:"Barbell|Cable Machine|Dumbbell",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"66f23ea9dc20d40025cfedb0",title:"Physique 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Dip Station",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"695c1e92127adcdae84768b3",title:"Sculpt | 3-Day (Tonal)",level:"intermediate",equipment:"Dumbbell|Cable Machine|Barbell",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"684a564ae844e7f98d2dda31",title:"4-Day Powerlifting",level:"intermediate",equipment:"Dumbbell|Barbell|Pull Up Bar|Trap Bar|Dip Station",daysPerWeek:4,weeks:8,tags:"Primary"},
+  {id:"6771e112623bcab75a62a06e",title:"Focus 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"6650c6bdac479a00253b55dd",title:"Athlete 2-Day",level:"intermediate",equipment:"Barbell|Dumbbell|Machine|Pull Up Bar|Medicine Ball|Trap Bar|Dip Station",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"684f637bcc8ee2ea9337ef4c",title:"Balance + Strength (4x)",level:"intermediate",equipment:"Machine|Dip Station|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Trap Bar|Medicine Ball",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"67eb44aaea71d6f2def2b2ef",title:"Foundation II 2-Day",level:"beginner",equipment:"Cable Machine|Machine|Smith Machine",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"690ad69af634c801a6a2e64c",title:"Build (Tonal)",level:"intermediate",equipment:"Cable Machine|Barbell",daysPerWeek:0,weeks:12,tags:"Primary"},
+  {id:"670415c544582f0026971ef5",title:"Female Recomposition | 4-Day",level:"advanced",equipment:"Machine|Dumbbell|Cable Machine|Barbell",daysPerWeek:4,weeks:12,tags:"Primary|Female Recomp"},
+  {id:"66c77b0f041c520024b7672c",title:"Foundation 4X",level:"beginner",equipment:"Cable Machine|Dumbbell|Machine|Smith Machine",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"665a8e6bf3845100258d62b5",title:"Starter 2-Day",level:"beginner",equipment:"Dumbbell",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"66809a4b28dd95002584de4b",title:"Recomposition Elite (3X/week)",level:"intermediate",equipment:"Dumbbell|Cable Machine|Barbell|Machine|Pull Up Bar|Dip Station",daysPerWeek:3,weeks:9,tags:"Primary"},
+  {id:"69747175b50daec5d8a51547",title:"Functional Strength | 3-Day | LUL/ULU",level:"intermediate",equipment:"Dip Station|Dumbbell|Machine|Barbell|Cable Machine|Pull Up Bar|Trap Bar|Mini Band",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"67a3b5ecdf8b7b6edd70f05f",title:"Fundamentals 4-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Dip Station",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"66fd7950205b2d0025e8b440",title:"Physique 5-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Dip Station",daysPerWeek:5,weeks:12,tags:"Primary"},
+  {id:"69308f119db6bc17de046bb8",title:"Charge | 2-Day (Power)",level:"intermediate|advanced",equipment:"Machine|Dumbbell|Cable Machine|Resistance Band|Trap Bar|Barbell",daysPerWeek:2,weeks:12,tags:"Primary|Charge"},
+  {id:"68fa83400be6a90ef7bc0c7e",title:"Full Body Foundation | 2-Day",level:"beginner",equipment:"Machine|Barbell|Dumbbell",daysPerWeek:2,weeks:10,tags:"Primary"},
+  {id:"684f6ecba97bce43236e9489",title:"Balance + Strength (3x)",level:"intermediate",equipment:"Dumbbell|Barbell|Cable Machine|Pull Up Bar|Trap Bar|Medicine Ball|Machine",daysPerWeek:3,weeks:16,tags:"Primary"},
+  {id:"695c1d72432fbe90565518c1",title:"Build | 3-Day (Tonal)",level:"intermediate",equipment:"Barbell|Cable Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"6664cac99a44c6002572db9c",title:"Power 3x Week",level:"intermediate",equipment:"Dumbbell|Cable Machine|Barbell|Machine",daysPerWeek:3,weeks:13,tags:"Primary"},
+  {id:"6763502ac504ee28657794eb",title:"Power 4X",level:"intermediate",equipment:"Dumbbell|Cable Machine|Barbell|Machine",daysPerWeek:4,weeks:13,tags:"Primary"},
+  {id:"6757c8e6eaf5833672c60ade",title:"PLATINUM 3-Day",level:"advanced",equipment:"Dip Station|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Machine|Leg Press",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"6851ae0593526f8d0e41300f",title:"Sculpt 4-Day",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Pull Up Bar|Leg Press",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"6886d21193596637c251e977",title:"3-Day Powerlifting",level:"intermediate",equipment:"Dumbbell|Machine|Barbell|Pull Up Bar|Trap Bar|Dip Station",daysPerWeek:3,weeks:4,tags:"Primary"},
+  {id:"68cb1bd1ee51eb599ba9b6dd",title:"Strain - 4x",level:"beginner",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"696d3e49a755001faf1747fd",title:"Triphasic",level:"intermediate",equipment:"Dumbbell|Barbell|Cable Machine|Machine|Trap Bar",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"68704a06dfe87f7d59ac3d5c",title:"Sprint",level:"intermediate",equipment:"Dumbbell|Barbell",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"68cb0e22c3fa401fce837779",title:"Strain - 2x",level:"beginner",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"695ecdd46a650474288465f4",title:"Fortress | 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Pull Up Bar|Trap Bar|Cable Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"672d07b21b9879633c3377fe",title:"Hybrid Athlete 6-Day",level:"advanced",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Dip Station",daysPerWeek:6,weeks:12,tags:"Primary"},
+  {id:"69308e1e508b9f8f7eb12e77",title:"Charge | 2-Day (Hypertrophy)",level:"intermediate|advanced",equipment:"Dumbbell|Barbell|Machine",daysPerWeek:2,weeks:12,tags:"Primary|Charge"},
+  {id:"68f283acc3af91dc7e6d0abb",title:"DB Only FULU x FLUL",level:"intermediate",equipment:"Dumbbell|Machine",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"664c30cb8195820024a24170",title:"Starter 4-Day",level:"beginner",equipment:"Dumbbell",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"67e1aabd48ac7b840b490d5e",title:"Foundation II | 2x-Week",level:"beginner",equipment:"Cable Machine|Dumbbell|Machine|Smith Machine",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"66648c681b3d4f00257f6ea6",title:"Foundation | 2x-Week",level:"beginner",equipment:"Cable Machine|Dumbbell|Machine|Smith Machine",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"69dd339fb81821add515e4d8",title:"Axis | 4 Day | LULU",level:"intermediate",equipment:"Barbell|Smith Machine|Cable Machine|Resistance Band|Pull Up Bar",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"693f21af2e91fdb65e12b306",title:"Surge | 2-Day",level:"intermediate",equipment:"Dumbbell|Barbell|Pull Up Bar|Machine",daysPerWeek:2,weeks:12,tags:"Primary|Surge"},
+  {id:"68224f3a45cb0db406040b42",title:"Growth 2X",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Pull Up Bar|Dip Station",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"693f2f426f53feb96316628b",title:"Surge | 3-Day",level:"intermediate",equipment:"Dumbbell|Barbell|Pull Up Bar|Machine",daysPerWeek:3,weeks:12,tags:"Primary|Surge"},
+  {id:"683f533a24ea489f2710e1fc",title:"Physique | 5-Day (PPLUL)",level:"intermediate",equipment:"Machine|Dumbbell|Smith Machine|Cable Machine|Barbell|Pull Up Bar|Dip Station|Leg Press",daysPerWeek:5,weeks:19,tags:"Primary"},
+  {id:"67d8958b3c7f217a526f31ae",title:"Toned (2x)",level:"intermediate",equipment:"Machine|Dumbbell|Barbell|Medicine Ball",daysPerWeek:2,weeks:14,tags:"Primary"},
+  {id:"670ea5b8d5f719002479e745",title:"Physique 4-Day",level:"advanced",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Dip Station",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"685c43ffe6f7f505a3bd2395",title:"Prime | 4-Day (FULF)",level:"intermediate",equipment:"Dip Station|Barbell|Dumbbell|Machine|Cable Machine|Pull Up Bar|Resistance Band|Trap Bar|Leg Press",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"68fa7b718ce1170fc30bad38",title:"Power | 3-day | PPL",level:"intermediate",equipment:"Machine|Dip Station|Barbell|Cable Machine|Leg Press|Dumbbell",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"685383144e4aa08b73fd09ab",title:"Strength + Stability | 3-Day",level:"intermediate",equipment:"Dumbbell|Barbell|Cable Machine|Pull Up Bar|Resistance Band|Medicine Ball|Trap Bar|Dip Station|Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"68f28233f5464f7541468fa4",title:"DB Only FUL",level:"intermediate",equipment:"Dumbbell|Machine",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"6940739dde5f31291b708a29",title:"Female Recomp | 3-Day | FUL",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell",daysPerWeek:3,weeks:12,tags:"Primary|Female Recomp"},
+  {id:"68179d2fd918d30cb80c6d1b",title:"Toned (4x)",level:"intermediate",equipment:"Machine|Dip Station|Dumbbell|Cable Machine|Barbell|Pull Up Bar|Medicine Ball",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"685c4baaa6fcc365103836c7",title:"Full/Upper/Lower Dumbbells",level:"intermediate",equipment:"Dumbbell",daysPerWeek:3,weeks:6,tags:"Dumbbell|Primary"},
+  {id:"675b4de2460c88501cb32dcc",title:"Focus 2-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Barbell|Pull Up Bar",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"6976b6a6f69aefa6638111e6",title:"Sculpt | 2-Day (Tonal)",level:"intermediate",equipment:"Dumbbell|Cable Machine|Barbell",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"68f5097e1762d8097aa4bb88",title:"Optimal",level:"advanced",equipment:"Machine|Dip Station|Dumbbell|Cable Machine|Barbell|Pull Up Bar",daysPerWeek:4,weeks:12,tags:"Primary"},
+  {id:"6649371740cae60025d23b98",title:"Recomposition (3X/Week)",level:"intermediate",equipment:"Dip Station|Dumbbell|Cable Machine|Barbell|Machine|Pull Up Bar|Medicine Ball",daysPerWeek:3,weeks:12,tags:"Primary"},
+  {id:"69b20d24561b45ee383d2aed",title:"Solidify | 2-Day",level:"intermediate",equipment:"Machine|Dumbbell|Cable Machine|Smith Machine|Resistance Band",daysPerWeek:2,weeks:12,tags:"Primary"},
+  {id:"6940d6a7d2914adc6519f5ac",title:"Weighted Calisthenics | 2-Day",level:"intermediate",equipment:"Dip Station|Medicine Ball|Pull Up Bar",daysPerWeek:2,weeks:12,tags:"Secondary"},
+  {id:"684a3e7bfad7efc113cf5e15",title:"Half Marathon Running Plan",level:"intermediate",equipment:"Machine",daysPerWeek:5,weeks:12,tags:"Secondary"},
+  {id:"684a3eadd0d246334b289749",title:"12-Week Marathon Running Plan",level:"intermediate",equipment:"",daysPerWeek:5,weeks:12,tags:"Secondary"},
+  {id:"66f724e96ec390002548ee57",title:"5KM | 3-Day",level:"beginner",equipment:"Machine",daysPerWeek:3,weeks:12,tags:"Secondary"},
+  {id:"6765d18ae8be8221aee3f7ac",title:"Half-Marathon | 3-Day",level:"intermediate",equipment:"Machine",daysPerWeek:3,weeks:12,tags:"Secondary"},
+  {id:"66ca8ece80cb5b00266323a6",title:"Agility 2-Day",level:"intermediate",equipment:"Exercise Ball|Machine|Medicine Ball",daysPerWeek:2,weeks:12,tags:"Secondary"},
+  {id:"686435ccc3594a4f07d0ac61",title:"Tactical Barbell",level:"intermediate",equipment:"Barbell|Pull Up Bar",daysPerWeek:3,weeks:6,tags:"Primary"},
+  {id:"68f59fd31eeba2b673cb41af",title:"Plyometrics For Bone Density",level:"intermediate",equipment:"",daysPerWeek:1,weeks:8,tags:"Secondary"},
+  {id:"69a0b5a6201190e3e094201c",title:"Pregnancy Strong | 2-Day",level:"intermediate",equipment:"Dumbbell|Smith Machine|Machine|Barbell",daysPerWeek:2,weeks:12,tags:"Secondary"},
+  {id:"6996467b21c4ff30e711acce",title:"Pregnancy Strong | 3-Day",level:"intermediate",equipment:"Machine|Dumbbell|Smith Machine|Barbell",daysPerWeek:3,weeks:12,tags:"Secondary"},
+  {id:"680c16c1ebeba06fd2d3c9aa",title:"amp Fundamentals | Full Body (1-Day)",level:"beginner",equipment:"Cable Machine",daysPerWeek:1,weeks:12,tags:"Secondary"},
+  {id:"680941044fed961dcfafd8e4",title:"amp | Upper (1-Day)",level:"beginner",equipment:"Cable Machine",daysPerWeek:1,weeks:6,tags:"Secondary"},
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+// trackConfig[trackId][equipId][daysId][gender] = [{id, note}]
+const trackConfig = {};
+TRACKS.forEach(t => {
+  trackConfig[t.id] = {};
+  EQUIP_OPTIONS.forEach(eq => {
+    trackConfig[t.id][eq.id] = {};
+    DAYS_OPTIONS.forEach(d => {
+      trackConfig[t.id][eq.id][d.id] = { male: [], female: [] };
+    });
+  });
+});
+
+// UI state per track column: which equip + days tab is active
+const trackUI = {};
+TRACKS.forEach(t => { trackUI[t.id] = { equip: 'fullgym', days: '2-3' }; });
+
+// Drag state
+let drag = null; // {type:'pool'|'track', programId, trackId, equip, days, gender, idx}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+const getP = id => PROGRAMS.find(p => p.id === id);
+
+function equipClass(eq) {
+  const parts = eq.split('|').filter(Boolean);
+  const hasMachine = parts.includes('Machine');
+  const hasBarbell = parts.includes('Barbell');
+  const hasDumbbell = parts.includes('Dumbbell');
+  const hasCable = parts.includes('Cable Machine');
+  const hasSmith = parts.includes('Smith Machine');
+  if (!hasMachine && !hasBarbell && hasDumbbell) return 'db';
+  if (!hasMachine && (hasBarbell || hasCable || hasSmith)) return 'tonal';
+  if (hasMachine || hasBarbell) return 'fullgym';
+  return 'any';
+}
+
+function matchesEquipFilter(prog, filterEquip) {
+  if (!filterEquip) return true;
+  const ec = equipClass(prog.equipment);
+  if (filterEquip === 'db') return ec === 'db';
+  if (filterEquip === 'tonal') return ec === 'tonal';
+  if (filterEquip === 'fullgym') return ec === 'fullgym';
+  return true;
+}
+
+function matchesDaysFilter(prog, filterDays) {
+  if (!filterDays) return true;
+  const d = prog.daysPerWeek;
+  if (filterDays === '2-3') return d >= 2 && d <= 3;
+  if (filterDays === '4-5') return d >= 4 && d <= 5;
+  return true;
+}
+
+function levelColor(l) {
+  if (l === 'beginner') return '#86efac';
+  if (l === 'intermediate') return '#fbbf24';
+  if (l === 'intermediate|advanced') return '#fb923c';
+  if (l === 'advanced') return '#f87171';
+  return '#9ca3af';
+}
+
+function pathCount(trackId, equipId, daysId) {
+  let n = 0;
+  GENDERS.forEach(g => { n += trackConfig[trackId][equipId][daysId][g].length; });
+  return n;
+}
+
+function totalFilledPaths(trackId) {
+  let n = 0;
+  EQUIP_OPTIONS.forEach(eq => DAYS_OPTIONS.forEach(d => {
+    if (pathCount(trackId, eq.id, d.id) > 0) n++;
+  }));
+  return n;
+}
+
+function inAnyTrack(pid) {
+  for (const t of TRACKS)
+    for (const eq of EQUIP_OPTIONS)
+      for (const d of DAYS_OPTIONS)
+        for (const g of GENDERS)
+          if (trackConfig[t.id][eq.id][d.id][g].some(e => e.id === pid)) return true;
+  return false;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER POOL
+// ═══════════════════════════════════════════════
+function renderPool() {
+  const q = document.getElementById('pSearch').value.toLowerCase();
+  const eq = document.getElementById('pEquip').value;
+  const days = document.getElementById('pDays').value;
+  const type = document.getElementById('pType').value;
+
+  const list = PROGRAMS.filter(p => {
+    if (q && !p.title.toLowerCase().includes(q)) return false;
+    if (type === 'primary' && p.tags.includes('Secondary') && !p.tags.includes('Primary')) return false;
+    if (type === 'secondary' && !p.tags.includes('Secondary')) return false;
+    if (!matchesEquipFilter(p, eq)) return false;
+    if (!matchesDaysFilter(p, days)) return false;
+    return true;
+  });
+
+  document.getElementById('poolCount').textContent = `${list.length} program${list.length !== 1?'s':''} shown`;
+
+  document.getElementById('poolBody').innerHTML = list.map(p => {
+    const inT = inAnyTrack(p.id);
+    const ec = equipClass(p.equipment);
+    const ecLabel = { db:'DB', tonal:'Tonal', fullgym:'Full', any:'Any' }[ec];
+    return `<div class="pc${inT?' in-track':''}"
+      draggable="true"
+      data-id="${p.id}"
+      ondragstart="onPoolDragStart(event,'${p.id}')"
+      ondragend="onDragEnd()">
+      <div class="pc-title">${p.title}</div>
+      <div class="pc-meta">
+        ${p.daysPerWeek > 0 ? `<span class="badge bd">${p.daysPerWeek}d/wk</span>` : ''}
+        <span class="badge bl" style="color:${levelColor(p.level)}">${p.level.replace('intermediate|advanced','I/A')}</span>
+        <span class="badge be">${ecLabel}</span>
+        ${p.tags.includes('Secondary') ? '<span class="badge bs">2°</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// RENDER TRACKS
+// ═══════════════════════════════════════════════
+function renderTracks() {
+  const wrap = document.getElementById('tracksWrap');
+  wrap.innerHTML = TRACKS.map(track => {
+    const ui = trackUI[track.id];
+    const filled = totalFilledPaths(track.id);
+    const total = EQUIP_OPTIONS.length * DAYS_OPTIONS.length;
+
+    // Stats line
+    const statsHtml = EQUIP_OPTIONS.map(eq => {
+      const cnt = DAYS_OPTIONS.reduce((s, d) => s + pathCount(track.id, eq.id, d.id), 0);
+      return `<span class="tc-stat${cnt>0?' filled':''}">${eq.short}: ${cnt > 0 ? cnt+'p' : '—'}</span>`;
+    }).join('');
+
+    // Equipment tabs
+    const equipTabs = EQUIP_OPTIONS.map(eq =>
+      `<div class="tb${ui.equip===eq.id?' active':''}" onclick="setTrackEquip('${track.id}','${eq.id}')">${eq.label}</div>`
+    ).join('');
+
+    // Days tabs
+    const daysTabs = DAYS_OPTIONS.map(d =>
+      `<div class="tb days${ui.days===d.id?' active':''}" onclick="setTrackDays('${track.id}','${d.id}')">${d.label}</div>`
+    ).join('');
+
+    // Drop zones for current equip + days
+    const maleZone = renderDZ(track.id, ui.equip, ui.days, 'male');
+    const femaleZone = renderDZ(track.id, ui.equip, ui.days, 'female');
+
+    return `
+    <div class="tc">
+      <div class="tc-head">
+        <div class="tc-title" style="color:${track.color}">${track.emoji} ${track.label}</div>
+        <div class="tc-stats">${statsHtml} <span style="color:#333;margin-left:4px">${filled}/${total} paths</span></div>
+      </div>
+      <div class="tab-row">${equipTabs}</div>
+      <div class="tab-row days-row">${daysTabs}</div>
+      <div class="tc-body">
+        <div class="gs">
+          <div class="gl">♂ Male <span>${trackConfig[track.id][ui.equip][ui.days].male.length} steps</span></div>
+          ${maleZone}
+        </div>
+        <div class="gs">
+          <div class="gl">♀ Female <span>${trackConfig[track.id][ui.equip][ui.days].female.length} steps</span></div>
+          ${femaleZone}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Wire drop events
+  wrap.querySelectorAll('.dz').forEach(z => {
+    z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('over'); });
+    z.addEventListener('dragleave', () => z.classList.remove('over'));
+    z.addEventListener('drop', onZoneDrop);
+  });
+
+  // Wire track card drag
+  wrap.querySelectorAll('.tcard').forEach(c => {
+    c.addEventListener('dragstart', onTrackDragStart);
+    c.addEventListener('dragend', onDragEnd);
+  });
+}
+
+function renderDZ(trackId, equipId, daysId, gender) {
+  const entries = trackConfig[trackId][equipId][daysId][gender];
+  const dzId = `dz-${trackId}-${equipId}-${daysId}-${gender}`;
+  let inner = entries.length === 0
+    ? '<div class="dz-empty">Drop programs here</div>'
+    : entries.map((e, i) => {
+        const p = getP(e.id);
+        if (!p) return '';
+        return `<div class="tcard"
+          draggable="true"
+          data-track="${trackId}" data-equip="${equipId}" data-days="${daysId}"
+          data-gender="${gender}" data-idx="${i}" data-id="${e.id}">
+          <div class="tcard-num">${i+1}</div>
+          <div class="tcard-info">
+            <div class="tcard-title">${p.title}</div>
+            <div class="tcard-meta">${p.daysPerWeek>0?p.daysPerWeek+'d/wk · ':''} ${p.weeks}wk</div>
+            ${e.note ? `<div class="tcard-note">${e.note}</div>` : ''}
+          </div>
+          <div class="tcard-btns">
+            <button class="icobtn del" onclick="removeEntry('${trackId}','${equipId}','${daysId}','${gender}',${i})">✕</button>
+            <button class="icobtn note" onclick="openNote('${trackId}','${equipId}','${daysId}','${gender}',${i})">✎</button>
+          </div>
+        </div>`;
+      }).join('');
+  return `<div class="dz" id="${dzId}" data-track="${trackId}" data-equip="${equipId}" data-days="${daysId}" data-gender="${gender}">${inner}</div>`;
+}
+
+// ═══════════════════════════════════════════════
+// TAB CONTROLS
+// ═══════════════════════════════════════════════
+function setTrackEquip(trackId, equipId) {
+  trackUI[trackId].equip = equipId;
+  render();
+}
+function setTrackDays(trackId, daysId) {
+  trackUI[trackId].days = daysId;
+  render();
+}
+
+// ═══════════════════════════════════════════════
+// DRAG — POOL
+// ═══════════════════════════════════════════════
+function onPoolDragStart(e, pid) {
+  drag = { type: 'pool', programId: pid };
+  e.dataTransfer.effectAllowed = 'copy';
+  e.currentTarget.classList.add('dragging');
+}
+
+// ═══════════════════════════════════════════════
+// DRAG — TRACK CARD
+// ═══════════════════════════════════════════════
+function onTrackDragStart(e) {
+  const c = e.currentTarget;
+  drag = {
+    type: 'track',
+    programId: c.dataset.id,
+    trackId: c.dataset.track,
+    equip: c.dataset.equip,
+    days: c.dataset.days,
+    gender: c.dataset.gender,
+    idx: parseInt(c.dataset.idx),
+  };
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => c.classList.add('dragging'), 0);
+}
+
+function onDragEnd() {
+  drag = null;
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.over').forEach(el => el.classList.remove('over'));
+}
+
+// ═══════════════════════════════════════════════
+// DROP — ZONE
+// ═══════════════════════════════════════════════
+function getInsertIdx(zone, clientY) {
+  const cards = Array.from(zone.querySelectorAll('.tcard'));
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    if (clientY < r.top + r.height / 2) return i;
+  }
+  return cards.length;
+}
+
+function onZoneDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const z = e.currentTarget;
+  z.classList.remove('over');
+  if (!drag) return;
+
+  const tTrack = z.dataset.track;
+  const tEquip = z.dataset.equip;
+  const tDays = z.dataset.days;
+  const tGender = z.dataset.gender;
+  const insertAt = getInsertIdx(z, e.clientY);
+
+  if (drag.type === 'pool') {
+    trackConfig[tTrack][tEquip][tDays][tGender].splice(insertAt, 0, { id: drag.programId, note: '' });
+  } else {
+    const src = trackConfig[drag.trackId][drag.equip][drag.days][drag.gender];
+    const [removed] = src.splice(drag.idx, 1);
+    const same = tTrack===drag.trackId && tEquip===drag.equip && tDays===drag.days && tGender===drag.gender;
+    const finalIdx = same && drag.idx < insertAt ? Math.max(0, insertAt-1) : insertAt;
+    trackConfig[tTrack][tEquip][tDays][tGender].splice(finalIdx, 0, removed);
+  }
+  saveToStorage();
+  render();
+}
+
+// Drop to pool = remove
+document.getElementById('poolBody').addEventListener('dragover', e => e.preventDefault());
+document.getElementById('poolBody').addEventListener('drop', e => {
+  e.preventDefault();
+  if (!drag || drag.type !== 'track') return;
+  trackConfig[drag.trackId][drag.equip][drag.days][drag.gender].splice(drag.idx, 1);
+  saveToStorage();
+  render();
+});
+
+// ═══════════════════════════════════════════════
+// CRUD
+// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// FIREBASE CONFIG — paste your values here
+// ═══════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDJ8Wy8hhLUUwQMb0P5E2FL9gMNAfiNm8E",
+  authDomain:        "kalos-track-builder.firebaseapp.com",
+  databaseURL:       "https://kalos-track-builder-default-rtdb.firebaseio.com",
+  projectId:         "kalos-track-builder",
+  storageBucket:     "kalos-track-builder.firebasestorage.app",
+  messagingSenderId: "46300463235",
+  appId:             "1:46300463235:web:385994d366d8594c0fdbb6"
+};
+const FIREBASE_READY = !FIREBASE_CONFIG.apiKey.includes('REPLACE');
+
+let db = null;
+let trackRef = null;
+let remoteListener = null;
+let isSyncingFromRemote = false;
+
+function initFirebase() {
+  if (!FIREBASE_READY) return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    trackRef = db.ref('trackConfig');
+
+    // Listen for remote changes and apply them
+    remoteListener = trackRef.on('value', snapshot => {
+      if (isSyncingFromRemote) return;
+      const data = snapshot.val();
+      if (!data) return;
+      isSyncingFromRemote = true;
+      mergeIntoConfig(data);
+      saveLocalBackup();
+      render();
+      showSyncStatus('🔄 Synced', '#7dd3fc');
+      setTimeout(() => { isSyncingFromRemote = false; }, 50);
+    });
+
+    showSyncStatus('🔥 Firebase connected', '#86efac');
+  } catch(e) {
+    console.warn('Firebase init failed:', e);
+    showSyncStatus('⚠ Offline mode', '#fbbf24');
+  }
+}
+
+function mergeIntoConfig(saved) {
+  TRACKS.forEach(t => {
+    if (!saved[t.id]) return;
+    EQUIP_OPTIONS.forEach(eq => {
+      if (!saved[t.id][eq.id]) return;
+      DAYS_OPTIONS.forEach(d => {
+        if (!saved[t.id][eq.id][d.id]) return;
+        GENDERS.forEach(g => {
+          if (Array.isArray(saved[t.id][eq.id][d.id][g])) {
+            trackConfig[t.id][eq.id][d.id][g] = saved[t.id][eq.id][d.id][g];
+          }
+        });
+      });
+    });
+  });
+}
+
+function showSyncStatus(msg, color) {
+  const ind = document.getElementById('saveIndicator');
+  if (!ind) return;
+  ind.textContent = '● ' + msg;
+  ind.style.color = color;
+  if (msg !== 'Firebase connected' && !msg.includes('Offline')) {
+    setTimeout(() => { ind.style.color = '#3a3a3a'; ind.textContent = '● Saved'; }, 1800);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// LOCALSTORAGE (offline backup)
+// ═══════════════════════════════════════════════
+const STORAGE_KEY = 'kalos-track-builder-v2';
+
+function saveLocalBackup() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(trackConfig)); } catch(e) {}
+}
+
+function loadLocalBackup() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    mergeIntoConfig(JSON.parse(raw));
+    return true;
+  } catch(e) { return false; }
+}
+
+// ═══════════════════════════════════════════════
+// SAVE — writes to Firebase (with localStorage backup)
+// ═══════════════════════════════════════════════
+function saveToStorage() {
+  saveLocalBackup();
+  if (trackRef) {
+    trackRef.set(trackConfig).catch(e => {
+      console.warn('Firebase write failed:', e);
+      showSyncStatus('⚠ Save failed', '#f87171');
+    });
+    showSyncStatus('Saving…', '#c8a96e');
+  } else {
+    showSyncStatus('Saved locally', '#c8a96e');
+  }
+}
+
+// Keep share link button (opens page URL — useful once hosted)
+function copyShareLink() {
+  const url = location.href.split('#')[0];
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('shareBtn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = '🔗 Copy Link'; }, 2000);
+  }).catch(() => prompt('Share this URL with your teammate:', url));
+}
+
+function removeEntry(trackId, equipId, daysId, gender, idx) {
+  trackConfig[trackId][equipId][daysId][gender].splice(idx, 1);
+  saveToStorage();
+  render();
+}
+
+let noteTarget = null;
+function openNote(trackId, equipId, daysId, gender, idx) {
+  noteTarget = { trackId, equipId, daysId, gender, idx };
+  document.getElementById('noteTA').value = trackConfig[trackId][equipId][daysId][gender][idx].note || '';
+  document.getElementById('noteOverlay').classList.add('open');
+}
+function closeNote() { document.getElementById('noteOverlay').classList.remove('open'); noteTarget = null; }
+function saveNote() {
+  if (!noteTarget) return;
+  const { trackId, equipId, daysId, gender, idx } = noteTarget;
+  trackConfig[trackId][equipId][daysId][gender][idx].note = document.getElementById('noteTA').value.trim();
+  closeNote();
+  saveToStorage();
+  render();
+}
+
+// ═══════════════════════════════════════════════
+// LOAD DEFAULTS / CLEAR
+// ═══════════════════════════════════════════════
+function loadDefaults() {
+  if (!confirm('Replace current layout with default paths from the mockup?')) return;
+  // Full Gym paths
+  const fg = 'fullgym';
+  const set = (tid, eq, days, gender, arr) => {
+    trackConfig[tid][eq][days][gender] = arr.map(id => ({id, note:''}));
+  };
+
+  // Recomp — Full Gym
+  set('recomp',fg,'2-3','male',['66648c681b3d4f00257f6ea6','664ba5d7134436002689b884','6649371740cae60025d23b98','66809a4b28dd95002584de4b']);
+  set('recomp',fg,'4-5','male',['66c77b0f041c520024b7672c','6649371740cae60025d23b98','6996445aec55a6b373a41ef3','69308c5ce9a8096725c512b4','683f9ea7aeb1c976ca4c8b5d']);
+  set('recomp',fg,'2-3','female',['66648c681b3d4f00257f6ea6','670416e9eabc450023e50f92','6940739dde5f31291b708a29']);
+  set('recomp',fg,'4-5','female',['66c77b0f041c520024b7672c','691b558351b6f3123375ac14','670415c544582f0026971ef5']);
+
+  // Recomp — Tonal
+  set('recomp','tonal','2-3','male',['695c1d72432fbe90565518c1']);
+  set('recomp','tonal','4-5','male',['690ad69af634c801a6a2e64c','69dd339fb81821add515e4d8','68ffb2d32980b94f5b6e527b']);
+  set('recomp','tonal','2-3','female',['6976b6a6f69aefa6638111e6']);
+  set('recomp','tonal','4-5','female',['695c1e92127adcdae84768b3','69dd339fb81821add515e4d8']);
+
+  // Recomp — DB
+  set('recomp','db','2-3','male',['672b12dcd90d75139ef82341','6759d4a625a498ca477a02a7']);
+  set('recomp','db','2-3','female',['68f95d68f1d6992335e8f6d9','68f95d925ed6594bd89c2559','68f81e5cad7a6907a839fe45']);
+
+  // Fat Loss — Full Gym
+  set('fatloss',fg,'2-3','male',['66648c681b3d4f00257f6ea6','664ba5d7134436002689b884','69b20d24561b45ee383d2aed','6996445aec55a6b373a41ef3']);
+  set('fatloss',fg,'4-5','male',['66c77b0f041c520024b7672c','681bf0f0904abafac70cf4c7','69308c5ce9a8096725c512b4','683f9ea7aeb1c976ca4c8b5d']);
+  set('fatloss',fg,'2-3','female',['6903b022a5610afac42b782c','67e43716a6287a8124abbdb0','670416e9eabc450023e50f92']);
+  set('fatloss',fg,'4-5','female',['6903b022a5610afac42b782c','6903b2449070ffc05338ace3','6851ae0593526f8d0e41300f','691b558351b6f3123375ac14']);
+
+  // Fat Loss — Tonal
+  set('fatloss','tonal','4-5','male',['690ad69af634c801a6a2e64c','69dd339fb81821add515e4d8','68ffb2d32980b94f5b6e527b']);
+  set('fatloss','tonal','2-3','female',['6976b6a6f69aefa6638111e6','695c1e92127adcdae84768b3']);
+  set('fatloss','tonal','4-5','female',['695c1e92127adcdae84768b3','69dd339fb81821add515e4d8']);
+
+  // Fat Loss — DB
+  set('fatloss','db','2-3','male',['672b12dcd90d75139ef82341','6759d4a625a498ca477a02a7']);
+  set('fatloss','db','2-3','female',['6903b022a5610afac42b782c','68f81e5cad7a6907a839fe45']);
+  set('fatloss','db','4-5','female',['6903b2449070ffc05338ace3','68f283acc3af91dc7e6d0abb']);
+
+  // Muscle — Full Gym
+  set('muscle',fg,'2-3','male',['666db8e0c1eafc00252c55e6','681bf0f0904abafac70cf4c7','6824e2f5ddd21d15affe0b33','685373ff34592134d899d82a','66f23ea9dc20d40025cfedb0']);
+  set('muscle',fg,'4-5','male',['66c77b0f041c520024b7672c','6824e2f5ddd21d15affe0b33','69308c5ce9a8096725c512b4','683f9ea7aeb1c976ca4c8b5d','68f5097e1762d8097aa4bb88','670ea5b8d5f719002479e745','6757c8e6eaf5833672c60ade']);
+  set('muscle',fg,'2-3','female',['666db8e0c1eafc00252c55e6','67cc9da265a0bd7e74b91354','67e04af05f8991108a7db6da']);
+  set('muscle',fg,'4-5','female',['66c77b0f041c520024b7672c','68179d2fd918d30cb80c6d1b','6851ae0593526f8d0e41300f','683f533a24ea489f2710e1fc']);
+
+  // Athlete — Full Gym
+  set('athlete',fg,'2-3','male',['666db8e0c1eafc00252c55e6','685c2f6b85b2a834a6255d14','697ed0663d9a2f0f4b085bee','684f6ecba97bce43236e9489','6650c6bdac479a00253b55dd','6650bf043b93550026c5ad2e']);
+  set('athlete',fg,'4-5','male',['66c77b0f041c520024b7672c','685c32bb6c0267e40ec5ebad','696d4b7e990d15907d03f00e','684f637bcc8ee2ea9337ef4c','68f67ed5a1f1309be99fd5a0','672d07b21b9879633c3377fe']);
+  set('athlete',fg,'2-3','female',['666db8e0c1eafc00252c55e6','685c2f6b85b2a834a6255d14','697ed0663d9a2f0f4b085bee','6650c6bdac479a00253b55dd']);
+  set('athlete',fg,'4-5','female',['66c77b0f041c520024b7672c','685c32bb6c0267e40ec5ebad','684f637bcc8ee2ea9337ef4c','6650bf043b93550026c5ad2e']);
+
+  // Runner
+  set('runner',fg,'2-3','male',['66f724e96ec390002548ee57','6765d18ae8be8221aee3f7ac']);
+  set('runner',fg,'4-5','male',['684a3e7bfad7efc113cf5e15','684a3eadd0d246334b289749']);
+  set('runner',fg,'2-3','female',['66f724e96ec390002548ee57','6765d18ae8be8221aee3f7ac']);
+  set('runner',fg,'4-5','female',['684a3e7bfad7efc113cf5e15','684a3eadd0d246334b289749']);
+
+  // Longevity
+  set('longevity',fg,'2-3','male',['67c8e9570045a3e404d18281','684f6ecba97bce43236e9489','693f21af2e91fdb65e12b306','693f2f426f53feb96316628b','696d3e49a755001faf1747fd']);
+  set('longevity',fg,'4-5','male',['67f00570d9cae861586749a0','684f637bcc8ee2ea9337ef4c','685383144e4aa08b73fd09ab','697ed0663d9a2f0f4b085bee']);
+  set('longevity',fg,'2-3','female',['67c8e9570045a3e404d18281','684f6ecba97bce43236e9489','693f21af2e91fdb65e12b306']);
+  set('longevity',fg,'4-5','female',['67f00570d9cae861586749a0','685383144e4aa08b73fd09ab','697ed0663d9a2f0f4b085bee']);
+
+  saveToStorage();
+  render();
+}
+
+function clearAll() {
+  if (!confirm('Clear all track assignments? This cannot be undone.')) return;
+  TRACKS.forEach(t => EQUIP_OPTIONS.forEach(eq => DAYS_OPTIONS.forEach(d => {
+    trackConfig[t.id][eq.id][d.id] = { male: [], female: [] };
+  })));
+  saveToStorage();
+  render();
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+function doExport() {
+  const out = {};
+  TRACKS.forEach(t => {
+    out[t.id] = { label: t.label };
+    EQUIP_OPTIONS.forEach(eq => {
+      out[t.id][eq.id] = {};
+      DAYS_OPTIONS.forEach(d => {
+        out[t.id][eq.id][d.id] = {};
+        GENDERS.forEach(g => {
+          const entries = trackConfig[t.id][eq.id][d.id][g];
+          if (entries.length > 0) {
+            out[t.id][eq.id][d.id][g] = entries.map((e, i) => {
+              const p = getP(e.id);
+              return { step: i+1, id: e.id, title: p?.title, days: p?.daysPerWeek, note: e.note || undefined };
+            });
+          }
+        });
+        if (Object.keys(out[t.id][eq.id][d.id]).length === 0) delete out[t.id][eq.id][d.id];
+      });
+      if (Object.keys(out[t.id][eq.id]).length === 0) delete out[t.id][eq.id];
+    });
+  });
+  document.getElementById('exportPre').textContent = JSON.stringify(out, null, 2);
+  document.getElementById('exportOverlay').classList.add('open');
+}
+
+function copyExport() {
+  navigator.clipboard.writeText(document.getElementById('exportPre').textContent)
+    .then(() => { const b = event.target; b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy to Clipboard', 1500); });
+}
+
+// Close overlays on backdrop click
+['noteOverlay','exportOverlay'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target.id === id) e.target.classList.remove('open');
+  });
+});
+
+// ═══════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════
+function render() { renderPool(); renderTracks(); }
+
+// Start with local backup while Firebase connects
+loadLocalBackup();
+render();
+
+// Then connect Firebase (will trigger a re-render with live data)
+initFirebase();
+
+// If Firebase isn't configured yet, show a setup hint
+if (!FIREBASE_READY) {
+  const ind = document.getElementById('saveIndicator');
+  if (ind) { ind.style.color = '#fbbf24'; ind.textContent = '⚠ Firebase not configured'; }
+}
+</script>
+</body>
+</html>
