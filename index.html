@@ -641,13 +641,28 @@ document.getElementById('poolBody').addEventListener('drop', e => {
 // FIREBASE CONFIG — paste your values here
 // ═══════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey:            "REPLACE_API_KEY",
-  authDomain:        "REPLACE_PROJECT_ID.firebaseapp.com",
-  databaseURL:       "https://REPLACE_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId:         "REPLACE_PROJECT_ID",
-  storageBucket:     "REPLACE_PROJECT_ID.appspot.com",
-  messagingSenderId: "REPLACE_SENDER_ID",
-  appId:             "REPLACE_APP_ID"
+ // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDJ8Wy8hhLUUwQMb0P5E2FL9gMNAfiNm8E",
+  authDomain: "kalos-track-builder.firebaseapp.com",
+  databaseURL: "https://kalos-track-builder-default-rtdb.firebaseio.com",
+  projectId: "kalos-track-builder",
+  storageBucket: "kalos-track-builder.firebasestorage.app",
+  messagingSenderId: "46300463235",
+  appId: "1:46300463235:web:385994d366d8594c0fdbb6",
+  measurementId: "G-9E468QJJMQ"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 };
 const FIREBASE_READY = !FIREBASE_CONFIG.apiKey.includes('REPLACE');
 
